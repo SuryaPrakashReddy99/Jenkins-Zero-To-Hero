@@ -37,14 +37,14 @@ pipeline {
                     credentialsId: 'aws-s3-credentials',
                     secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
                 )]) {
-                    sh '''
+                    sh """
                       # Upload build artifacts
-                      aws s3 sync ./build/ s3://S3_BUCKET/${JOB_NAME}/${BUILD_NUMBER}/
+                      aws s3 sync ./build/ s3://${S3_BUCKET}/${JOB_NAME}/${BUILD_NUMBER}/
 
                       # Upload console log directly
                       aws s3 cp /var/lib/jenkins/jobs/${JOB_NAME}/builds/${BUILD_NUMBER}/log \
-                        s3://S3_BUCKET/${JOB_NAME}/${BUILD_NUMBER}/console.log
-                    '''
+                        s3://${S3_BUCKET}/${JOB_NAME}/${BUILD_NUMBER}/console.log
+                    """
                 }
             }
         }
