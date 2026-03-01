@@ -1,12 +1,60 @@
 pipeline {
-  agent {
-    docker { image 'node:16-alpine' }
-  }
-  stages {
-    stage('Test') {
-      steps {
-        sh 'node --version'
-      }
+    agent any
+    environment {
+        S3_BUCKET = 'backups3logsjenk'
     }
-  }
+    stages {
+        stage('git clone') {
+            steps {
+                git branch: 'main', 
+                    credentialsId: 'jenkins-token', 
+                    url: 'https://github.com/SuryaPrakashReddy99/Jenkins-Zero-To-Hero.git'
+            }
+        }
+        stage('build') {
+            steps {
+                sh '''
+                  echo "build stage"
+                  mkdir -p build
+                  echo "test-artifact" > build/app.jar
+                '''
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'echo "test stage"'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sh 'echo "deploy stage"'
+            }
+        }
+        stage('Upload Logs to S3') {
+            steps {
+                withCredentials([aws(
+                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                    credentialsId: 'aws-s3-credentials',
+                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
+                    sh '''
+                      # Upload build artifacts
+                      aws s3 sync ./build/ s3://S3_BUCKET/${JOB_NAME}/${BUILD_NUMBER}/
+
+                      # Upload console log directly
+                      aws s3 cp /var/lib/jenkins/jobs/${JOB_NAME}/builds/${BUILD_NUMBER}/log \
+                        s3://S3_BUCKET/${JOB_NAME}/${BUILD_NUMBER}/console.log
+                    '''
+                }
+            }
+        }
+    }
+    post {
+        always {
+            echo 'Pipeline finished. Logs uploaded to S3.'
+        }
+        failure {
+            echo 'Build FAILED - check S3 logs for details.'
+        }
+    }
 }
